@@ -21,17 +21,18 @@ server.on('request', async (req, res) => {
       const writeStream = fs.createWriteStream(filepath, { flags: 'wx' });
       const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
 
-      // req.on('error', (err) => {
-      //   if (err) {
-      //     fs.unlink(filepath, () => {});
-      //     res.statusCode = 400;
-      //     res.end('Connection error');
-      //   }
-      // });
+      req.on('error', (err) => {
+        if (err.code !== 'ECONNRESET') {
+          res.statusCode = 500;
+          res.end('Internal Server Error');
+        } else {
+          fs.unlink(filepath, () => {});
+        }
+      });
 
       limitedStream.on('error', (err) => {
-        fs.unlink(filepath, () => {});
         if (err.code === 'LIMIT_EXCEEDED') {
+          fs.unlink(filepath, () => {});
           res.statusCode = 413;
           res.end('1 Mb Limit has been exceeded');
         } else {

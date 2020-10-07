@@ -18,69 +18,44 @@ server.on('request', async (req, res) => {
     const filepath = path.join(__dirname, 'files', pathname);
 
     if (req.method === 'POST') {
-      // Check If the file already exists
-      let stats = new Promise((resolve) =>
-        fs.stat(filepath, (err) => {
-          if (err) {
-            resolve(null);
-          } else {
-            resolve(409);
-          }
-        })
-      );
-      stats = await stats;
-      if (stats) {
-        res.statusCode = stats;
-        res.end('File already exists');
-        return;
-      }
+      const writeStream = fs.createWriteStream(filepath, { flags: 'wx' });
+      const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
 
-      let body = [];
-      req
+      req.on('error', (err) => {
+        if (err) {
+          fs.unlink(filepath, () => {});
+          res.statusCode = 400;
+          res.end('Connection error');
+        }
+      });
+
+      limitedStream.on('error', (err) => {
+        if (err.code === 'LIMIT_EXCEEDED') {
+          fs.unlink(filepath, () => {});
+          res.statusCode = 413;
+          res.end('1 Mb Limit has been exceeded');
+        } else {
+          res.statusCode = 500;
+          res.end(err.message);
+        }
+      });
+
+      writeStream
         .on('error', (err) => {
-          if (err.code !== 'ECONNRESET') {
-            res.statusCode = 500;
-            res.end('Internal Server Error');
+          if (err.code === 'EEXIST') {
+            res.statusCode = 409;
+            res.end('File already exists');
           } else {
-            fs.unlink(filepath, () => {});
+            res.statusCode = 500;
+            res.end(err.message);
           }
         })
-        .on('data', (chunk) => {
-          body.push(chunk);
-        })
-        .on('end', () => {
-          body = Buffer.concat(body).toString();
-          const writeStream = fs.createWriteStream(filepath);
-          const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
-          new Promise((resolve, reject) => {
-            limitedStream
-              .on('error', (err) => {
-                if (err.code === 'LIMIT_EXCEEDED') {
-                  resolve(413);
-                } else {
-                  resolve(500);
-                }
-              })
-              .on('finish', (data) => {
-                resolve(201);
-              });
-          }).then((data) => {
-            res.statusCode = data;
-            if (data === 201) {
-              res.end('File saved successfully');
-            } else if (data === 413) {
-              fs.unlink(filepath, () => {});
-              res.end('1 Mb Limit has been exceeded');
-            } else {
-              res.end('Internal Server Error');
-            }
-          });
-
-          limitedStream.pipe(writeStream);
-
-          limitedStream.write(body);
-          limitedStream.end();
+        .on('finish', (data) => {
+          res.statusCode = 201;
+          res.end('File saved successfully');
         });
+
+      req.pipe(limitedStream).pipe(writeStream);
     } else {
       res.statusCode = 501;
       res.end(`Requested ${req.method} method is not implemented`);

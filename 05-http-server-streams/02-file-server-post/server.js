@@ -22,11 +22,9 @@ server.on('request', async (req, res) => {
       const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
 
       req.on('error', (err) => {
-        if (err) {
-          fs.unlink(filepath, () => {});
-          res.statusCode = 400;
-          res.end('Connection error');
-        }
+        fs.unlink(filepath, () => {});
+        res.statusCode = 400;
+        res.end('Connection error');
       });
 
       limitedStream.on('error', (err) => {
@@ -38,6 +36,7 @@ server.on('request', async (req, res) => {
           res.statusCode = 500;
           res.end(err.message);
         }
+        limitedStream.end();
       });
 
       writeStream

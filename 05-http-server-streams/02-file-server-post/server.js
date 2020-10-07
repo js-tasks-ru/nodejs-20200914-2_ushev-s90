@@ -39,11 +39,10 @@ server.on('request', async (req, res) => {
       req
         .on('error', (err) => {
           if (err.code !== 'ECONNRESET') {
-            console.log(err);
             res.statusCode = 500;
             res.end('Internal Server Error');
           } else {
-            fs.unlink(filepath);
+            fs.unlink(filepath, () => {});
           }
         })
         .on('data', (chunk) => {
@@ -70,7 +69,7 @@ server.on('request', async (req, res) => {
             if (data === 201) {
               res.end('File saved successfully');
             } else if (data === 413) {
-              fs.unlink(filepath);
+              fs.unlink(filepath, () => {});
               res.end('1 Mb Limit has been exceeded');
             } else {
               res.end('Internal Server Error');

@@ -21,13 +21,10 @@ server.on('request', async (req, res) => {
       const writeStream = fs.createWriteStream(filepath, { flags: 'wx' });
       const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
 
-      req.on('error', (err) => {
-        if (err.code !== 'ECONNRESET') {
-          res.statusCode = 500;
-          res.end('Internal Server Error');
-        } else {
-          fs.unlink(filepath, () => {});
-        }
+      req.on('abort', () => {
+        fs.unlink(filepath, () => {});
+        res.statusCode = 500;
+        res.end('Request has been aborted by the client');
       });
 
       limitedStream.on('error', (err) => {

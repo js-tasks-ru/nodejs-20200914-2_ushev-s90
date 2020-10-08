@@ -21,8 +21,14 @@ server.on('request', async (req, res) => {
       const writeStream = fs.createWriteStream(filepath, { flags: 'wx' });
       const limitedStream = new LimitSizeStream({ limit: 1048576 }); //1 Mb
 
-      req.on('abort', () => {
-        fs.unlink(filepath, () => {});
+      // req.on('abort', () => {
+      //   fs.unlink(filepath, () => {});
+      // });
+
+      res.on('close', () => {
+        if (!res.writableFinished) {
+          fs.unlink(filepath, () => {});
+        }
       });
 
       limitedStream.on('error', (err) => {

@@ -23,8 +23,6 @@ server.on('request', async (req, res) => {
 
       req.on('abort', () => {
         fs.unlink(filepath, () => {});
-        res.statusCode = 500;
-        res.end('Request has been aborted by the client');
       });
 
       limitedStream.on('error', (err) => {

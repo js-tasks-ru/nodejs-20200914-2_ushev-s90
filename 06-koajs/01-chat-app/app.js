@@ -10,7 +10,7 @@ const Router = require('koa-router');
 const router = new Router();
 
 router.get('/subscribe', async (ctx, next) => {
-  const id = ctx.request.query.r;
+  const id = Math.random();
   subscribers[id] = ctx.res;
   await new Promise((resolve, reject) => {
     ctx.res.on('close', () => {
